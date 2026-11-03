@@ -11,6 +11,7 @@ In alphabetical order:
 - Kai Herlemann
 - Hugo Osvaldo Barrera
 - Jason Cox
+- Jordan Graham
 - Julian Mehne
 - Malte Kiefer
 - Marek Marczykowski-Górecki

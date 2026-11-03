@@ -9,6 +9,12 @@ Package maintainers and users who have to manually update their installation
 may want to subscribe to `GitHub's tag feed
 <https://github.com/pimutils/vdirsyncer/tags.atom>`_.
 
+Unreleased
+==========
+
+- Use component UIDs instead of the calendar UID when synchronizing calendars
+  with an RFC 7986 calendar-level UID. :gh:`1222`
+
 Version 0.21.0
 ==============
 

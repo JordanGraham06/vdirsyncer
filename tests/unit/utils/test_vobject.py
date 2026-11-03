@@ -191,6 +191,14 @@ def test_vcalendar_with_uid(calendar_with_uid, component, uid_line):
     assert item.raw == raw
 
 
+def test_vcalendar_with_folded_uid(calendar_with_uid):
+    raw = calendar_with_uid.replace(
+        "UID:calendar-uid-123", "UID;VALUE=TEXT:calendar-\n uid-123"
+    )
+
+    assert vobject.Item(raw).uid == "event-uid-456"
+
+
 @pytest.mark.parametrize("uid_line", ["", "UID:", "UID:   "])
 def test_vcalendar_without_component_uid(calendar_with_uid, uid_line):
     raw = calendar_with_uid.replace("UID:event-uid-456", uid_line)
