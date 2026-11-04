@@ -156,6 +156,110 @@ def test_multiline_uid(benchmark):
     assert benchmark(lambda: vobject.Item(a).uid) == "123456789abcdefgh"
 
 
+@pytest.fixture
+def calendar_with_uid():
+    return dedent(
+        """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Test//Test//EN
+        UID:calendar-uid-123
+        BEGIN:VEVENT
+        DTSTART:20140325T084000Z
+        DTEND:20140325T101000Z
+        UID:event-uid-456
+        SUMMARY:Test Event
+        END:VEVENT
+        END:VCALENDAR
+        """
+    ).lstrip()
+
+
+@pytest.mark.parametrize("component", ["VEVENT", "VTODO", "VJOURNAL"])
+@pytest.mark.parametrize(
+    "uid_line",
+    ["UID:event-uid-456", "UID;VALUE=TEXT:event-uid-456", "UID:event-uid-\n\t456"],
+)
+def test_vcalendar_with_uid(calendar_with_uid, component, uid_line):
+    raw = calendar_with_uid.replace("VEVENT", component).replace(
+        "UID:event-uid-456", uid_line
+    )
+    item = vobject.Item(raw)
+
+    assert item.uid == "event-uid-456"
+    assert item.ident == "event-uid-456"
+    assert item.raw == raw
+
+
+def test_vcalendar_with_folded_uid(calendar_with_uid):
+    raw = calendar_with_uid.replace(
+        "UID:calendar-uid-123", "UID;VALUE=TEXT:calendar-\n uid-123"
+    )
+
+    assert vobject.Item(raw).uid == "event-uid-456"
+
+
+@pytest.mark.parametrize("uid_line", ["", "UID:", "UID:   "])
+def test_vcalendar_without_component_uid(calendar_with_uid, uid_line):
+    raw = calendar_with_uid.replace("UID:event-uid-456", uid_line)
+    item = vobject.Item(raw)
+
+    assert item.uid is None
+    assert item.ident == item.hash
+
+
+def test_vcalendar_without_components():
+    item = vobject.Item("BEGIN:VCALENDAR\nUID:calendar-uid\nEND:VCALENDAR")
+
+    assert item.uid is None
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "UID:item-uid",
+        "BEGIN:FOO\nUID:item-uid",
+        "BEGIN:VCARD\nUID:item-uid\nEND:VCARD",
+        "BEGIN:VEVENT\nUID:item-uid\nEND:VEVENT",
+    ],
+)
+def test_uid_without_calendar_wrapper(raw):
+    assert vobject.Item(raw).uid == "item-uid"
+
+
+@pytest.mark.parametrize("new_uid", ["replacement-uid", None])
+def test_replace_uid_preserves_calendar_uid(calendar_with_uid, new_uid):
+    item = vobject.Item(calendar_with_uid)
+    updated = item.with_uid(new_uid)
+
+    assert updated.uid == new_uid
+    assert updated.parsed["UID"] == "calendar-uid-123"
+    assert updated.parsed.subcomponents[0].get("UID") == new_uid
+    assert item.raw == calendar_with_uid
+
+
+def test_split_collection_with_calendar_uid(calendar_with_uid):
+    event = vobject._Component.parse(calendar_with_uid).subcomponents[0]
+    recurrence = vobject._Component.parse("\n".join(event.dump_lines()))
+    recurrence["RECURRENCE-ID"] = "20140325T084000Z"
+    other_event = vobject._Component.parse("\n".join(event.dump_lines()))
+    other_event["UID"] = "another-event-uid"
+    calendar = vobject._Component.parse(calendar_with_uid)
+    calendar.subcomponents = [event, recurrence, other_event]
+
+    items = {
+        item.uid: item
+        for item in map(
+            vobject.Item, vobject.split_collection("\n".join(calendar.dump_lines()))
+        )
+    }
+
+    assert set(items) == {"event-uid-456", "another-event-uid"}
+    assert len(items["event-uid-456"].parsed.subcomponents) == 2
+    assert len(items["another-event-uid"].parsed.subcomponents) == 1
+    assert all(item.parsed["UID"] == "calendar-uid-123" for item in items.values())
+
+
 complex_uid_item = dedent(
     """
     BEGIN:VCALENDAR

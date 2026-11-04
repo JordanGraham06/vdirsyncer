@@ -69,9 +69,20 @@ class Item:
     def uid(self):
         """Global identifier of the item, across storages, doesn't change after
         a modification of the item."""
-        # Don't actually parse component, but treat all lines as single
-        # component, avoiding traversal through all subcomponents.
-        x = _Component("TEMP", self.raw.splitlines(), [])
+        # RFC 7986 allows a UID on VCALENDAR, but it identifies the calendar,
+        # not the item. Keep the lookup lightweight by tracking nesting only.
+        stack = []
+        lines = []
+        for line in self.raw.splitlines():
+            if line.startswith("BEGIN:"):
+                stack.append(line[len("BEGIN:") :].strip().upper())
+            elif line.startswith("END:") and stack:
+                stack.pop()
+
+            if line.startswith(("BEGIN:", "END:")) or stack != ["VCALENDAR"]:
+                lines.append(line)
+
+        x = _Component("TEMP", lines, [])
         try:
             return x["UID"].strip() or None
         except KeyError:

@@ -16,7 +16,8 @@ from vdirsyncer.storage.http import prepare_auth
 
 
 @pytest.mark.asyncio
-async def test_list(aio_connector):
+@pytest.mark.parametrize("calendar_uid", ["", "UID:calendar-uid"])
+async def test_list(aio_connector, calendar_uid):
     collection_url = "http://127.0.0.1/calendar/collection.ics"
 
     items = [
@@ -41,7 +42,9 @@ async def test_list(aio_connector):
         ),
     ]
 
-    responses = ["\n".join(["BEGIN:VCALENDAR", *items, "END:VCALENDAR"])] * 2
+    responses = [
+        "\n".join(["BEGIN:VCALENDAR", calendar_uid, *items, "END:VCALENDAR"])
+    ] * 2
 
     def callback(url, headers, **kwargs):
         assert headers["User-Agent"].startswith("vdirsyncer/")

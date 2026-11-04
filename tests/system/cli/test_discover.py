@@ -5,6 +5,7 @@ from textwrap import dedent
 
 import pytest
 
+from tests import EVENT_TEMPLATE
 from vdirsyncer import exceptions
 from vdirsyncer.storage.base import Storage
 
@@ -106,7 +107,7 @@ def test_discover_different_collection_names(tmpdir, runner):
     assert not result.exception
 
     foo_txt = coll_a1.join("foo.txt")
-    foo_txt.write("BEGIN:VCALENDAR\nUID:foo\nEND:VCALENDAR")
+    foo_txt.write(EVENT_TEMPLATE.format(r=123, uid="foo"))
 
     result = runner.invoke(["sync"])
     assert not result.exception
